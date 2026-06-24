@@ -1,0 +1,45 @@
+# DEMO — SimPL language showcase
+
+# Basic values
+x = 5;
+pi = 3.141592;
+flag = true;
+
+# Arithmetic
+area = pi * x * x;
+
+# Simple function  (fun is a synonym for lambda)
+double = fun(n) ~ n * 2;
+
+# Factorial — recursive, num -> num
+fact = lambda(n) ~
+    if n = 0
+        then 1
+        else n * fact(n-1);
+
+# Fibonacci — recursive
+fib = lambda(n) ~
+    if n < 3
+        then 1
+        else fib(n-1) + fib(n-2);
+
+# Fibonacci in linear time via tail-style iteration (let expression)
+fib2 = lambda(n)
+    let
+        iter = fun(a,b,i) ~
+            if i = n
+                then b
+                else iter(b, a+b, i+1)
+    in
+        iter(0, 1, 1);
+
+# GCD — Euclid's algorithm
+mcd = lambda(m,n) ~
+    if m = n then m
+    else if m > n then mcd(m-n, n)
+    else mcd(n-m, m);
+
+# Boolean helpers
+both = lambda(a,b) ~ a & b;
+either = lambda(a,b) ~ a | b;
+negate = lambda(a) ~ !a

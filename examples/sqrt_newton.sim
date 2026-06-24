@@ -1,0 +1,18 @@
+# Newton's method for square root
+
+epsilon = 0.0000001;
+
+# One Newton step: x  ->  (x + n/x) / 2
+prox = fun(x,n) ~ (x + n / x) / 2;
+
+# Iterate until new approximation val is close to previous x
+sqrtIter = lambda(x,n) ~
+    let
+        val = prox(x, n)
+    in
+        if abs(val - x) < epsilon
+            then val
+            else sqrtIter(val, n);
+
+# Public entry-point: start guess from 1.0
+mySqrt = lambda(n) ~ sqrtIter(1.0, n)
