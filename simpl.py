@@ -1,11 +1,6 @@
 #!/usr/bin/env python3
-"""
-simpl.py — SimPL interpreter entry point.
+# simpl.py — SimPL interpreter entry point.
 
-Usage:
-  python simpl.py               # start interactive shell
-  python simpl.py prog.sim ...  # load files then start shell
-"""
 import sys
 import os
 
@@ -13,7 +8,6 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from simpl.shell import Shell
-
 
 def main():
     shell = Shell()
@@ -23,7 +17,6 @@ def main():
         shell.load(filename)
 
     shell.run()
-
 
 if __name__ == '__main__':
     main()

@@ -1,15 +1,5 @@
-"""
-SimPL tree-walking interpreter.
+#SimPL tree-walking interpreter.
 
-Scoping rules
-─────────────
-• Lexical (static) scope: closures capture the *environment* at definition time.
-• Recursive/mutually-recursive scope within the same level: all names in a
-  block (program top-level or let-bindings) are inserted into the shared
-  environment *before* evaluating any of their right-hand sides.  This lets
-  definitions at the same level reference each other (including forward
-  references and mutual recursion).
-"""
 import math
 from typing import Any, Dict, List, Optional
 
@@ -19,14 +9,12 @@ from .ast_nodes import (
 )
 
 
-# ── runtime error ─────────────────────────────────────────────────────────────
-
+# runtime error
 class SimPLError(Exception):
     pass
 
 
-# ── environment ───────────────────────────────────────────────────────────────
-
+# environment
 class Environment:
     def __init__(self, parent: Optional['Environment'] = None):
         self.bindings: Dict[str, Any] = {}
@@ -43,10 +31,9 @@ class Environment:
         raise SimPLError(f"Undefined identifier: '{name}'")
 
 
-# ── runtime values ────────────────────────────────────────────────────────────
-
+# runtime values
 class Closure:
-    """User-defined function (lambda / fun)."""
+    # User-defined function (lambda / fun)
     def __init__(self, params: List[str], body: Node, env: Environment):
         self.params = params
         self.body   = body
@@ -74,15 +61,13 @@ class BuiltinFunc:
         return f"<builtin {self.name}>"
 
 
-# ── interpreter ───────────────────────────────────────────────────────────────
-
+# interpreter
 class Interpreter:
     def __init__(self):
         self.global_env = Environment()
         self._register_builtins()
 
-    # -- built-ins -----------------------------------------------------------
-
+    # built-ins
     def _register_builtins(self):
         builtins = [
             BuiltinFunc('abs',  1, lambda x: abs(x)),
@@ -94,10 +79,9 @@ class Interpreter:
         for b in builtins:
             self.global_env.define(b.name, b)
 
-    # -- program / definition ------------------------------------------------
-
+    # program / definition: Evaluate a full program, adding definitions to the global env
     def eval_program(self, program: Program):
-        """Evaluate a full program, adding definitions to the global env."""
+
         # Check for duplicate names in this block
         names_seen = set()
         for defn in program.defs:
@@ -107,8 +91,7 @@ class Interpreter:
                 raise SimPLError(f"Duplicate definition: '{defn.name}'")
             names_seen.add(defn.name)
 
-        # First pass: register all names as None placeholders so that
-        # closures created in this block can refer to siblings.
+        # First pass: register all names as None placeholders so that closures created in this block can refer to siblings.
         for defn in program.defs:
             self.global_env.define(defn.name, None)
 
@@ -118,7 +101,7 @@ class Interpreter:
             self.global_env.define(defn.name, val)
 
     def eval_definition(self, defn: Definition) -> Any:
-        """Evaluate a single top-level definition from the shell."""
+        #Evaluate a single top-level definition from the shell
         if defn.name in self.global_env.bindings and defn.name not in self._builtins():
             raise SimPLError(f"Duplicate definition: '{defn.name}'")
         val = self.eval(defn.expr, self.global_env)
@@ -129,7 +112,7 @@ class Interpreter:
         return {k for k, v in self.global_env.bindings.items()
                 if isinstance(v, BuiltinFunc)}
 
-    # -- expression dispatch -------------------------------------------------
+    # expression dispatch
 
     def eval(self, node: Node, env: Environment) -> Any:
         if isinstance(node, IntLit):
@@ -154,7 +137,7 @@ class Interpreter:
             return self._eval_let(node, env)
         raise SimPLError(f"Unknown AST node: {type(node).__name__}")
 
-    # -- binary operators ----------------------------------------------------
+    # binary operators
 
     def _eval_binop(self, node: BinOp, env: Environment) -> Any:
         op = node.op
@@ -218,7 +201,7 @@ class Interpreter:
 
     @staticmethod
     def _arith(result, left, right):
-        """Promote to float if either operand is float."""
+        #Promote to float if either operand is float
         if isinstance(left, float) or isinstance(right, float):
             return float(result)
         return result
@@ -233,7 +216,7 @@ class Interpreter:
         if not (isinstance(a, bool) and isinstance(b, bool)):
             raise SimPLError(f"Operator '{op}' requires boolean operands")
 
-    # -- unary operators -----------------------------------------------------
+    # unary operators
 
     def _eval_unary(self, node: UnaryOp, env: Environment) -> Any:
         val = self.eval(node.operand, env)
@@ -247,7 +230,7 @@ class Interpreter:
             return not val
         raise SimPLError(f"Unknown unary operator '{node.op}'")
 
-    # -- function call -------------------------------------------------------
+    # function call
 
     def _eval_call(self, node: FuncCall, env: Environment) -> Any:
         func = self.eval(node.func, env)
@@ -270,7 +253,7 @@ class Interpreter:
 
         raise SimPLError(f"'{func!r}' is not a function")
 
-    # -- if ------------------------------------------------------------------
+    # if
 
     def _eval_if(self, node: IfExpr, env: Environment) -> Any:
         cond = self.eval(node.cond, env)
@@ -280,7 +263,7 @@ class Interpreter:
             )
         return self.eval(node.then_expr if cond else node.else_expr, env)
 
-    # -- let -----------------------------------------------------------------
+    # let
 
     def _eval_let(self, node: LetExpr, env: Environment) -> Any:
         let_env = Environment(env)

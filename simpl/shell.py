@@ -1,15 +1,5 @@
-"""
-SimPL interactive shell.
+#SimPL interactive shell.
 
-Commands
-────────
-  load "file.sim"   — load definitions from a file
-  clear             — reset the interpreter state
-  types             — list all current definitions with their types
-  exit / quit       — leave the shell
-  <expr>            — evaluate an expression
-  <name> = <expr>   — define a new name
-"""
 import sys
 import os
 from typing import Optional
@@ -24,7 +14,7 @@ from .type_checker import (
 from .ast_nodes import Definition, Node
 
 
-# ── formatting helpers ────────────────────────────────────────────────────────
+# formatting helpers
 
 def _fmt_value(val) -> str:
     if isinstance(val, bool):
@@ -46,7 +36,7 @@ def _fmt_type(t) -> str:
     return str(t)
 
 
-# ── shell ─────────────────────────────────────────────────────────────────────
+# shell
 
 class Shell:
     BANNER = (
@@ -69,7 +59,7 @@ class Shell:
             if isinstance(val, BuiltinFunc):
                 self.type_env.define(name, ANY)  # simplified: builtins are ANY
 
-    # -- file loading --------------------------------------------------------
+    # file loading
 
     def load(self, filename: str):
         path = filename.strip().strip('"').strip("'")
@@ -103,7 +93,7 @@ class Shell:
         except SimPLError as e:
             print(f"Runtime error: {e}")
 
-    # -- single-line shell input ---------------------------------------------
+    # single-line shell input
 
     def process(self, line: str):
         line = line.strip()
@@ -160,7 +150,7 @@ class Shell:
         except RecursionError:
             print("Runtime error: maximum recursion depth exceeded")
 
-    # -- REPL loop -----------------------------------------------------------
+    # REPL loop
 
     def run(self):
         print(self.BANNER)

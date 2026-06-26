@@ -1,16 +1,12 @@
-"""
-SimPL type inference.
+#SimPL type inference.
 
-Types: NUM, BOOL, ANY, NONE (error)
-Function types: FuncType(param_types, return_type)
-"""
 from typing import Dict, List, Optional, Tuple, Union
 from .ast_nodes import (
     Node, IntLit, RealLit, BoolLit, Ident, BinOp, UnaryOp,
     Lambda, FuncCall, IfExpr, LetExpr, Definition, Program,
 )
 
-# ── type constants ────────────────────────────────────────────────────────────
+# type constants
 
 NUM  = 'num'
 BOOL = 'bool'
@@ -41,7 +37,7 @@ def _fmt(t: Type) -> str:
     return repr(t) if isinstance(t, FuncType) else t
 
 
-# ── type environment ──────────────────────────────────────────────────────────
+# type environment
 
 class TypeEnv:
     def __init__(self, parent: Optional['TypeEnv'] = None):
@@ -63,7 +59,7 @@ class TypeEnv:
             other.define(k, v)
 
 
-# ── helpers ───────────────────────────────────────────────────────────────────
+# helpers
 
 def _compatible(t1: Type, t2: Type) -> bool:
     if t1 == ANY or t2 == ANY:
@@ -83,13 +79,11 @@ def _merge(t1: Type, t2: Type) -> Type:
     return NONE  # conflict
 
 
-# ── constraint collector for lambda params ────────────────────────────────────
+# constraint collector for lambda params
 
 def _constrain_param(name: str, node: Node, env: TypeEnv) -> Type:
-    """
-    Walk `node` to find what type `name` must have to make sense.
-    Returns the strongest type constraint found, or ANY.
-    """
+    # Walk `node` to find what type `name` must have to make sense.
+    # Returns the strongest type constraint found, or ANY.
     if isinstance(node, Ident):
         return ANY  # no constraint from identity
 
@@ -156,7 +150,7 @@ def _constrain_param(name: str, node: Node, env: TypeEnv) -> Type:
 
 
 def _uses(name: str, node: Node) -> bool:
-    """Return True if `name` appears anywhere in `node`."""
+    # Return True if `name` appears anywhere in `node`
     if isinstance(node, Ident):
         return node.name == name
     if isinstance(node, BinOp):
@@ -179,7 +173,7 @@ def _uses(name: str, node: Node) -> bool:
     return False
 
 
-# ── main inference ────────────────────────────────────────────────────────────
+# main inference
 
 def infer(node: Node, env: TypeEnv) -> Type:
     if isinstance(node, IntLit):
@@ -260,7 +254,7 @@ def _infer_lambda(node: Lambda, env: TypeEnv) -> FuncType:
         _constrain_param(p, node.body, func_env) for p in node.params
     ]
 
-    # Pass 2: re-infer body with constrained param types → better return type
+    # Pass 2: re-infer body with constrained param types -> better return type
     func_env2 = TypeEnv(env)
     for p, pt in zip(node.params, param_types):
         func_env2.define(p, pt)
@@ -278,7 +272,7 @@ def _infer_call(node: FuncCall, env: TypeEnv) -> Type:
     return NONE
 
 
-# ── program-level check ───────────────────────────────────────────────────────
+# program-level check
 
 def check_program(program: Program, env: Optional[TypeEnv] = None) -> Dict[str, Type]:
     if env is None:

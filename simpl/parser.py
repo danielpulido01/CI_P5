@@ -15,7 +15,7 @@ class Parser:
         self.tokens = tokens
         self.pos = 0
 
-    # ── token navigation ──────────────────────────────────────────────────
+    # token navigation
 
     def peek(self) -> Token:
         return self.tokens[self.pos]
@@ -41,7 +41,7 @@ class Parser:
     def check(self, *types: TokenType) -> bool:
         return self.peek().type in types
 
-    # ── top-level ─────────────────────────────────────────────────────────
+    # top-level
 
     def parse_program(self) -> Program:
         defs: List[Definition] = []
@@ -61,7 +61,7 @@ class Parser:
         expr = self.parse_expr()
         return Definition(name_tok.value, expr)
 
-    # ── expressions ───────────────────────────────────────────────────────
+    # expressions
 
     def parse_expr(self) -> Node:
         if self.check(TokenType.LET):
@@ -72,7 +72,7 @@ class Parser:
             return self.parse_lambda()
         return self.parse_bool_expr()
 
-    # -- let ---------------------------------------------------------------
+    # let
 
     def parse_let(self) -> LetExpr:
         self.expect(TokenType.LET)
@@ -89,13 +89,13 @@ class Parser:
                 if self.check(TokenType.IN):
                     break           # trailing semicolon before 'in'
                 continue            # another binding follows
-            break                   # no semicolon → last binding
+            break                   # no semicolon -> last binding
 
         self.expect(TokenType.IN)
         body = self.parse_expr()
         return LetExpr(defs, body)
 
-    # -- if ----------------------------------------------------------------
+    # if
 
     def parse_if(self) -> IfExpr:
         self.expect(TokenType.IF)
@@ -106,7 +106,7 @@ class Parser:
         else_e = self.parse_expr()
         return IfExpr(cond, then_e, else_e)
 
-    # -- lambda / fun ------------------------------------------------------
+    # lambda / fun
 
     def parse_lambda(self) -> Lambda:
         self.advance()              # consume 'lambda' or 'fun'
@@ -121,7 +121,7 @@ class Parser:
         body = self.parse_expr()
         return Lambda(params, body)
 
-    # -- boolean layer ---------------------------------------------------- &, |, ^
+    # boolean layer (&, |, ^)
 
     def parse_bool_expr(self) -> Node:
         left = self.parse_cmp_expr()
@@ -131,7 +131,7 @@ class Parser:
             left = BinOp(op, left, right)
         return left
 
-    # -- comparison layer ------------------------------------------------- =, <, >, <=, >=, !=
+    # comparison layer (=, <, >, <=, >=, !=)
 
     def parse_cmp_expr(self) -> Node:
         left = self.parse_add_expr()
@@ -144,7 +144,7 @@ class Parser:
             left = BinOp(op, left, right)
         return left
 
-    # -- additive layer --------------------------------------------------- +, -
+    # additive layer (+, -)
 
     def parse_add_expr(self) -> Node:
         left = self.parse_mul_expr()
@@ -154,7 +154,7 @@ class Parser:
             left = BinOp(op, left, right)
         return left
 
-    # -- multiplicative layer --------------------------------------------- *, /, div, %
+    # multiplicative layer (*, /, div, %)
 
     def parse_mul_expr(self) -> Node:
         left = self.parse_unary()
@@ -166,7 +166,7 @@ class Parser:
             left = BinOp(op, left, right)
         return left
 
-    # -- unary ------------------------------------------------------------ !, -
+    # unary (!, -)
 
     def parse_unary(self) -> Node:
         if self.match(TokenType.BANG):
@@ -183,7 +183,7 @@ class Parser:
             return UnaryOp('-', self.parse_unary())
         return self.parse_postfix()
 
-    # -- postfix call ----------------------------------------------------- f(args)
+    # postfix call: f(args)
 
     def parse_postfix(self) -> Node:
         node = self.parse_primary()
@@ -198,7 +198,7 @@ class Parser:
             node = FuncCall(node, args)
         return node
 
-    # -- primary ---------------------------------------------------------- literals, ident, (expr)
+    # primary: literals, ident, (expr)
 
     def parse_primary(self) -> Node:
         t = self.peek()
@@ -224,7 +224,7 @@ class Parser:
         )
 
 
-# ── public helpers ────────────────────────────────────────────────────────────
+# public helpers
 
 def parse(source: str) -> Program:
     tokens = tokenize(source)
@@ -240,10 +240,10 @@ def parse_expr_only(source: str) -> Node:
 
 
 def parse_shell_input(source: str) -> Union[Definition, Node]:
-    """Parse a single shell line as either a definition or an expression."""
+    # Parse a single shell line as either a definition or an expression.
     tokens = tokenize(source)
-    # Heuristic: IDENT '=' and the third token is NOT a comparison operator
-    # → treat as definition.  Otherwise parse as expression.
+    # IDENT '=' and the third token is NOT a comparison operator
+    # -> treat as definition.  Otherwise parse as expression.
     if (
         len(tokens) >= 3
         and tokens[0].type == TokenType.IDENT
