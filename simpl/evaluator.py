@@ -61,6 +61,17 @@ class BuiltinFunc:
         return f"<builtin {self.name}>"
 
 
+# helpers
+
+def _is_num(v: Any) -> bool:
+    #True for int/float but NOT bool (bool is a subclass of int in Python)
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def _is_bool(v: Any) -> bool:
+    return isinstance(v, bool)
+
+
 # interpreter
 class Interpreter:
     def __init__(self):
@@ -79,9 +90,8 @@ class Interpreter:
         for b in builtins:
             self.global_env.define(b.name, b)
 
-    # program / definition: Evaluate a full program, adding definitions to the global env
+    # program / definition
     def eval_program(self, program: Program):
-
         # Check for duplicate names in this block
         names_seen = set()
         for defn in program.defs:
@@ -91,7 +101,7 @@ class Interpreter:
                 raise SimPLError(f"Duplicate definition: '{defn.name}'")
             names_seen.add(defn.name)
 
-        # First pass: register all names as None placeholders so that closures created in this block can refer to siblings.
+        # First pass: placeholders so closures can reference siblings
         for defn in program.defs:
             self.global_env.define(defn.name, None)
 
@@ -101,7 +111,7 @@ class Interpreter:
             self.global_env.define(defn.name, val)
 
     def eval_definition(self, defn: Definition) -> Any:
-        #Evaluate a single top-level definition from the shell
+        # Evaluate a single top-level definition from the shell
         if defn.name in self.global_env.bindings and defn.name not in self._builtins():
             raise SimPLError(f"Duplicate definition: '{defn.name}'")
         val = self.eval(defn.expr, self.global_env)
@@ -160,13 +170,15 @@ class Interpreter:
                 raise SimPLError("Division by zero")
             return float(left) / float(right)
         if op == 'div':
-            if not (isinstance(left, int) and isinstance(right, int)):
+            if not (isinstance(left, int) and isinstance(right, int)
+                    and not isinstance(left, bool) and not isinstance(right, bool)):
                 raise SimPLError("'div' requires integer operands")
             if right == 0:
                 raise SimPLError("Division by zero")
             return left // right
         if op == '%':
-            if not (isinstance(left, int) and isinstance(right, int)):
+            if not (isinstance(left, int) and isinstance(right, int)
+                    and not isinstance(left, bool) and not isinstance(right, bool)):
                 raise SimPLError("'%' requires integer operands")
             if right == 0:
                 raise SimPLError("Modulo by zero")
@@ -201,19 +213,20 @@ class Interpreter:
 
     @staticmethod
     def _arith(result, left, right):
-        #Promote to float if either operand is float
+        # Promote to float if either operand is float
         if isinstance(left, float) or isinstance(right, float):
             return float(result)
         return result
 
     @staticmethod
     def _expect_num2(op, a, b):
-        if not (isinstance(a, (int, float)) and isinstance(b, (int, float))):
+        # Raise if either operand is not a number (bools are excluded)
+        if not (_is_num(a) and _is_num(b)):
             raise SimPLError(f"Operator '{op}' requires numeric operands")
 
     @staticmethod
     def _expect_bool2(op, a, b):
-        if not (isinstance(a, bool) and isinstance(b, bool)):
+        if not (_is_bool(a) and _is_bool(b)):
             raise SimPLError(f"Operator '{op}' requires boolean operands")
 
     # unary operators
@@ -221,11 +234,11 @@ class Interpreter:
     def _eval_unary(self, node: UnaryOp, env: Environment) -> Any:
         val = self.eval(node.operand, env)
         if node.op == '-':
-            if not isinstance(val, (int, float)):
+            if not _is_num(val):
                 raise SimPLError("Unary '-' requires a numeric operand")
             return -val
         if node.op == '!':
-            if not isinstance(val, bool):
+            if not _is_bool(val):
                 raise SimPLError("'!' requires a boolean operand")
             return not val
         raise SimPLError(f"Unknown unary operator '{node.op}'")
@@ -245,7 +258,7 @@ class Interpreter:
                     f"Function expects {len(func.params)} argument(s), "
                     f"got {len(args)}"
                 )
-            # New environment: lexical parent = closure's captured env
+            # Lexical scoping: new env's parent is the closure's captured env
             call_env = Environment(func.env)
             for param, arg in zip(func.params, args):
                 call_env.define(param, arg)
@@ -257,7 +270,7 @@ class Interpreter:
 
     def _eval_if(self, node: IfExpr, env: Environment) -> Any:
         cond = self.eval(node.cond, env)
-        if not isinstance(cond, bool):
+        if not _is_bool(cond):
             raise SimPLError(
                 f"'if' condition must be a boolean, got {_type_name(cond)}"
             )

@@ -85,38 +85,54 @@ def _constrain_param(name: str, node: Node, env: TypeEnv) -> Type:
     # Walk `node` to find what type `name` must have to make sense.
     # Returns the strongest type constraint found, or ANY.
     if isinstance(node, Ident):
-        return ANY  # no constraint from identity
+        return ANY  # no constraint from identity alone
 
     if isinstance(node, BinOp):
         op = node.op
         uses_left  = _uses(name, node.left)
         uses_right = _uses(name, node.right)
 
+        # Arithmetic operators always require NUM
         if op in ('+', '-', '*', '/', 'div', '%'):
             if uses_left or uses_right:
                 return NUM
 
+        # Boolean logic operators always require BOOL
         if op in ('&', '|', '^'):
             if uses_left or uses_right:
                 return BOOL
 
-        if op in ('=', '<', '>', '<=', '>=', '!='):
+        # Comparison operators ('<', '>', '<=', '>=') always compare numbers
+        if op in ('<', '>', '<=', '>='):
+            if uses_left or uses_right:
+                return NUM  # these operators are numeric-only
+
+        if op in ('=', '!='):
+            # '=' and '!=' can compare bools or nums; infer from the other side,
+            #  but fall back to NUM if the other side is also unknown.
             if uses_left:
                 rt = infer(node.right, env)
                 if rt == NUM:
                     return NUM
                 if rt == BOOL:
                     return BOOL
+                # Other side unknown — peek at right's own constraint
+                rc = _constrain_param(name, node.right, env)
+                if rc != ANY:
+                    return rc
+                return ANY
             if uses_right:
                 lt = infer(node.left, env)
                 if lt == NUM:
                     return NUM
                 if lt == BOOL:
                     return BOOL
-            if uses_left or uses_right:
-                return ANY  # comparison but other side unknown
+                lc = _constrain_param(name, node.left, env)
+                if lc != ANY:
+                    return lc
+                return ANY
 
-        # recurse into sub-expressions
+        # Recurse into sub-expressions to find deeper constraints
         t1 = _constrain_param(name, node.left, env)
         t2 = _constrain_param(name, node.right, env)
         return _merge(t1, t2)
@@ -133,12 +149,21 @@ def _constrain_param(name: str, node: Node, env: TypeEnv) -> Type:
         return _merge(_merge(tc, tt), te)
 
     if isinstance(node, FuncCall):
-        # Recurse into arguments — param may appear in arithmetic there
-        t = ANY
-        for arg in node.args:
-            at = _constrain_param(name, arg, env)
-            t = _merge(t, at)
-        return t
+        # If `name` appears as argument i of a call whose function type is
+        # known, use the declared parameter type as the constraint.
+        ft = infer(node.func, env)
+        result = ANY
+        for i, arg in enumerate(node.args):
+            if _uses(name, arg):
+                if isinstance(ft, FuncType) and i < len(ft.param_types):
+                    # The function tells us what type this position must be
+                    declared = ft.param_types[i]
+                    result = _merge(result, declared)
+                else:
+                    # Function type unknown — recurse into the arg expression
+                    at = _constrain_param(name, arg, env)
+                    result = _merge(result, at)
+        return result
 
     if isinstance(node, LetExpr):
         let_env = TypeEnv(env)
@@ -244,12 +269,13 @@ def _infer_binop(node: BinOp, env: TypeEnv) -> Type:
 
 
 def _infer_lambda(node: Lambda, env: TypeEnv) -> FuncType:
-    # Pass 1: infer with params=ANY to get return type and param constraints
+    # Pass 1: infer with params=ANY to let the environment stabilise
     func_env = TypeEnv(env)
     for p in node.params:
         func_env.define(p, ANY)
-    infer(node.body, func_env)  # run once to let recursive lookups stabilise
+    infer(node.body, func_env)
 
+    # Collect constraints for each parameter
     param_types: List[Type] = [
         _constrain_param(p, node.body, func_env) for p in node.params
     ]
@@ -280,8 +306,9 @@ def check_program(program: Program, env: Optional[TypeEnv] = None) -> Dict[str, 
     # Seed all names as ANY for mutual recursion
     for defn in program.defs:
         env.define(defn.name, ANY)
-    # Iterate to fixpoint (handles recursive type inference)
-    for _ in range(8):
+    # Iterate to fixpoint (handles recursive/mutually-recursive definitions)
+    changed = True
+    while changed:
         changed = False
         for defn in program.defs:
             t = infer(defn.expr, env)
@@ -289,6 +316,4 @@ def check_program(program: Program, env: Optional[TypeEnv] = None) -> Dict[str, 
             if t != old:
                 env.define(defn.name, t)
                 changed = True
-        if not changed:
-            break
     return {defn.name: env.lookup(defn.name) for defn in program.defs}

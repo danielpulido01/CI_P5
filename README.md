@@ -150,7 +150,7 @@ double : num -> num = <function(n)>
 inc : num -> num = <function(n)>
 
 > doubleThenInc = compose(inc, double)
-doubleThenInc : any = <function(x)>
+doubleThenInc : any -> any = <function(x)>
 
 > doubleThenInc(5)
 11 : any
@@ -172,7 +172,7 @@ Loaded 4 definition(s) from 'sqrt_newton.sim'
 3 : num
 
 > mySqrt(2)
-1.41421356 : num
+1.414213562 : num
 
 > mySqrt(144)
 12 : num
